@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Cricket Scorer</title>
+    <style>
+        :root {
+            --primary-color: #1a237e;
+            --accent-color: #d32f2f;
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-dark: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        /* --- SETUP SCREEN STYLES --- */
+        .setup-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .setup-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .setup-card h2 { color: var(--primary-color); margin-top: 0; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-size: 0.9rem; color: #666; margin-bottom: 5px; }
+        .input-group input {
+            width: 100%; padding: 10px;
+            border: 2px solid #ddd; border-radius: 6px;
+            font-size: 1rem; box-sizing: border-box; 
+        }
+        .start-btn {
+            background: var(--primary-color); color: white;
+            width: 100%; padding: 12px; border: none; border-radius: 6px;
+            font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px;
+        }
+
+        /* --- SCOREBOARD STYLES --- */
+        header {
+            background: linear-gradient(90deg, #004d40 0%, #00695c 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        
+        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; display: none; }
+        
+        .scoreboard-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid #eee;
+        }
+
+        .match-info { font-size: 1.2rem; color: #444; font-weight: 700; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; text-transform: uppercase;}
+        .main-score { font-size: 4rem; font-weight: 800; color: var(--text-dark); margin: 5px 0; line-height: 1;}
+        .overs-display { font-size: 1.3rem; color: #555; margin-bottom: 5px;}
+        .crr-display { font-size: 0.9rem; color: #888; font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { text-align: left; font-size: 0.8rem; color: #888; padding: 8px; border-bottom: 1px solid #ddd;}
+        td { padding: 10px 8px; font-weight: 600; border-bottom: 1px solid #eee; }
+        
+        .striker-name { color: var(--primary-color); font-weight: bold; font-size: 1.1em; }
+        .striker-name::after { content: " \25C0"; color: var(--accent-color); font-size: 0.8em; } /* Arrow icon */
+
+        /* Controls */
+        .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+        button {
+            padding: 15px; border: none; border-radius: 8px;
+            font-size: 1.1rem; font-weight: bold; cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        button:active { transform: scale(0.95); }
+        .btn-run { background-color: #e3f2fd; color: #1565c0; }
+        .btn-four { background-color: #4caf50; color: white; }
+        .btn-six { background-color: #2e7d32; color: white; }
+        .btn-wicket { background-color: #c62828; color: white; }
+        .btn-extra { background-color: #ff9800; color: white; }
+
+        /* Action Buttons (Save/Print) */
+        .action-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-action { flex: 1; background: #333; color: white; font-size: 0.9rem; padding: 10px; }
+        .btn-action:hover { background: #555; }
+
+        /* Commentary */
+        .commentary-box { background: var(--card-bg); border-radius: 12px; padding: 15px; height: 150px; overflow-y: auto; border: 1px solid #eee; }
+        .comm-line { border-left: 3px solid #ddd; padding-left: 10px; margin-bottom: 8px; font-size: 0.9rem; }
+        .comm-ball { font-weight: bold; color: #555; margin-right: 10px; }
+        .comm-event-4 { border-left-color: green; background-color: #e8f5e9; }
+        .comm-event-w { border-left-color: red; background-color: #ffebee; }
+
+        /* PRINT STYLES (Hides buttons when saving as PDF) */
+        @media print {
+            header, .setup-overlay, .controls, .action-buttons, .commentary-box h3, .input-group { display: none !important; }
+            body { background: white; }
+            .container { display: block !important; margin: 0; width: 100%; max-width: 100%; }
+            .scoreboard-card { box-shadow: none; border: 2px solid #000; }
+            .commentary-box { height: auto; overflow: visible; border: 1px solid #ccc; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>AARIB's' CricInfo</h1>
+    </header>
+
+    <div class="setup-overlay" id="setupScreen">
+        <div class="setup-card">
+            <h2>Match Setup</h2>
+            <div class="input-group">
+                <label>Batting Team</label>
+                <input type="text" id="teamNameInput" value="India">
+            </div>
+            <div class="input-group">
+                <label>Bowling Team</label>
+                <input type="text" id="bowlingTeamInput" value="Australia">
+            </div>
+            <div class="input-group">
+                <label>Striker</label>
+                <input type="text" id="strikerInput" value="Kohli">
+            </div>
+            <div class="input-group">
+                <label>Non-Striker</label>
+                <input type="text" id="nonStrikerInput" value="Rohit">
+            </div>
+            <div class="input-group">
+                <label>Bowler</label>
+                <input type="text" id="bowlerInput" value="Starc">
+            </div>
+            <button class="start-btn" onclick="startMatch()">Start Match</button>
+        </div>
+    </div>
+
+    <div class="container" id="mainDashboard">
+        
+        <div class="scoreboard-card" id="printableArea">
+            <div class="match-info">
+                <span id="teamNameDisplay">Team A</span> <span style="font-size:0.8em; color:#888;">vs</span> <span id="bowlingTeamDisplay">Team B</span>
+            </div>
+            
+            <div class="main-score">
+                <span id="score">0</span>/<span id="wickets">0</span>
+            </div>
+            <div class="overs-display">
+                Over: <span id="overs">0.0</span> <span style="color:#888; font-size:0.8em; margin-left:10px;">(Bowler: <span id="bowlerDisplay"></span>)</span>
+            </div>
+            <div class="crr-display">CRR: <span id="crr">0.00</span></div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>BATSMAN</th>
+                        <th>R</th>
+                        <th>B</th>
+                        <th>4s</th>
+                        <th>6s</th>
+                        <th>SR</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="row-p1">
+                        <td id="name-p1">Player 1</td>
+                        <td id="p1-runs">0</td>
+                        <td id="p1-balls">0</td>
+                        <td id="p1-4s">0</td>
+                        <td id="p1-6s">0</td>
+                        <td id="p1-sr">0.0</td>
+                    </tr>
+                    <tr id="row-p2">
+                        <td id="name-p2">Player 2</td>
+                        <td id="p2-runs">0</td>
+                        <td id="p2-balls">0</td>
+                        <td id="p2-4s">0</td>
+                        <td id="p2-6s">0</td>
+                        <td id="p2-sr">0.0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn-action" onclick="window.print()">🖨️ Print / Save PDF</button>
+            <button class="btn-action" onclick="downloadReport()">⬇️ Download .txt Report</button>
+        </div>
+
+        <div class="controls">
+            <button class="btn-run" onclick="updateScore(0)">0</button>
+            <button class="btn-run" onclick="updateScore(1)">1</button>
+            <button class="btn-run" onclick="updateScore(2)">2</button>
+            <button class="btn-four" onclick="updateScore(4)">4</button>
+            <button class="btn-six" onclick="updateScore(6)">6</button>
+            <button class="btn-extra" onclick="updateScore('WD')">WD</button>
+            <button class="btn-extra" onclick="updateScore('NB')">NB</button>
+            <button class="btn-wicket" onclick="updateScore('W')">OUT</button>
+        </div>
+
+        <h3>Commentary Feed</h3>
+        <div class="commentary-box" id="comm-box">
+            <div class="comm-line">Match initialized. Waiting for first ball...</div>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let totalRuns = 0;
+        let totalWickets = 0;
+        let ballsBowled = 0;
+        let strikerIndex = 1;
+        
+        // Setup Variables
+        let battingTeam = "";
+        let bowlingTeam = "";
+        let p1 = { name: "", runs: 0, balls: 0, fours: 0, sixes: 0 };
+        let p2 = { name: "", runs: 0, balls: 0, fours: 0, sixes: 0 };
+        let currentBowler = "";
+
+        // --- SETUP ---
+        function startMatch() {
+            battingTeam = document.getElementById('teamNameInput').value;
+            bowlingTeam = document.getElementById('bowlingTeamInput').value;
+            const sName = document.getElementById('strikerInput').value;
+            const nsName = document.getElementById('nonStrikerInput').value;
+            currentBowler = document.getElementById('bowlerInput').value;
+
+            if(!battingTeam || !sName || !nsName) { alert("Please fill in all names!"); return; }
+
+            p1.name = sName;
+            p2.name = nsName;
+
+            document.getElementById('teamNameDisplay').innerText = battingTeam;
+            document.getElementById('bowlingTeamDisplay').innerText = bowlingTeam;
+            document.getElementById('bowlerDisplay').innerText = currentBowler;
+            document.getElementById('name-p1').innerText = p1.name;
+            document.getElementById('name-p2').innerText = p2.name;
+
+            document.getElementById('setupScreen').style.display = 'none';
+            document.getElementById('mainDashboard').style.display = 'block';
+            updateStrikerVisuals();
+        }
+
+        // --- SCORING LOGIC ---
+        function updateScore(action) {
+            if (totalWickets >= 10) { alert("Innings Closed!"); return; }
+
+            let runScored = 0;
+            let isLegalBall = true;
+            let commText = "";
+
+            // Handle Wicket
+            if (action === 'W') {
+                totalWickets++;
+                isLegalBall = true;
+                commText = `<b>OUT!</b> ${strikerIndex === 1 ? p1.name : p2.name} has to go.`;
+                
+                let newName = prompt("Enter New Batsman Name:", "Next Batsman");
+                if(strikerIndex === 1) { 
+                    p1 = { name: newName || "Next Bat", runs: 0, balls: 0, fours: 0, sixes: 0 };
+                } else { 
+                    p2 = { name: newName || "Next Bat", runs: 0, balls: 0, fours: 0, sixes: 0 };
+                }
+            } 
+            // Handle Extras
+            else if (action === 'WD' || action === 'NB') {
+                totalRuns++; 
+                isLegalBall = false;
+                commText = action === 'WD' ? "Wide ball." : "No Ball!";
+            } 
+            // Handle Runs
+            else {
+                runScored = action;
+                totalRuns += runScored;
+                
+                let currentBat = strikerIndex === 1 ? p1 : p2;
+                currentBat.runs += runScored;
+                currentBat.balls++;
+                
+                if(runScored === 4) { currentBat.fours++; commText = "FOUR! Great shot."; }
+                else if(runScored === 6) { currentBat.sixes++; commText = "SIX! Huge hit!"; }
+                else { commText = `${runScored} run(s).`; }
+
+                if (runScored % 2 !== 0) {
+                    strikerIndex = strikerIndex === 1 ? 2 : 1; // Rotate strike
+                }
+            }
+
+            if (isLegalBall) {
+                ballsBowled++;
+                if (ballsBowled % 6 === 0) {
+                    commText += " <b>End of Over.</b>";
+                    strikerIndex = strikerIndex === 1 ? 2 : 1;
+                }
+            }
+
+            renderDashboard(commText, action, isLegalBall);
+        }
+
+        // --- UI UPDATES ---
+        function updateStrikerVisuals() {
+            const name1 = document.getElementById('name-p1');
+            const name2 = document.getElementById('name-p2');
+            name1.classList.remove('striker-name');
+            name2.classList.remove('striker-name');
+
+            if(strikerIndex === 1) {
+                name1.classList.add('striker-name');
+                name1.innerText = p1.name; name2.innerText = p2.name;
+            } else {
+                name2.classList.add('striker-name');
+                name2.innerText = p2.name; name1.innerText = p1.name;
+            }
+        }
+
+        function calculateSR(runs, balls) {
+            if(balls === 0) return "0.0";
+            return ((runs / balls) * 100).toFixed(1);
+        }
+
+        function renderDashboard(commentary, action, isLegalBall) {
+            document.getElementById('score').innerText = totalRuns;
+            document.getElementById('wickets').innerText = totalWickets;
+
+            let completedOvers = Math.floor(ballsBowled / 6);
+            let currentBall = ballsBowled % 6;
+            document.getElementById('overs').innerText = `${completedOvers}.${currentBall}`;
+
+            let totalOversDecimal = ballsBowled / 6;
+            let crr = totalOversDecimal > 0 ? (totalRuns / totalOversDecimal).toFixed(2) : "0.00";
+            document.getElementById('crr').innerText = crr;
+
+            // Update Batsman Stats
+            document.getElementById('p1-runs').innerText = p1.runs;
+            document.getElementById('p1-balls').innerText = p1.balls;
+            document.getElementById('p1-4s').innerText = p1.fours;
+            document.getElementById('p1-6s').innerText = p1.sixes;
+            document.getElementById('p1-sr').innerText = calculateSR(p1.runs, p1.balls);
+
+            document.getElementById('p2-runs').innerText = p2.runs;
+            document.getElementById('p2-balls').innerText = p2.balls;
+            document.getElementById('p2-4s').innerText = p2.fours;
+            document.getElementById('p2-6s').innerText = p2.sixes;
+            document.getElementById('p2-sr').innerText = calculateSR(p2.runs, p2.balls);
+
+            updateStrikerVisuals();
+
+            // Commentary
+            const commBox = document.getElementById('comm-box');
+            const newLog = document.createElement('div');
+            newLog.className = 'comm-line';
+            if(action === 4 || action === 6) newLog.classList.add('comm-event-4');
+            if(action === 'W') newLog.classList.add('comm-event-w');
+
+            let ballLabel = isLegalBall ? `${completedOvers}.${currentBall}` : "Ex";
+            newLog.innerHTML = `<span class="comm-ball">${ballLabel}</span> ${commentary}`;
+            commBox.prepend(newLog);
+        }
+
+        // --- EXPORT FEATURE ---
+        function downloadReport() {
+            let completedOvers = Math.floor(ballsBowled / 6);
+            let currentBall = ballsBowled % 6;
+            let crr = ballsBowled > 0 ? (totalRuns / (ballsBowled/6)).toFixed(2) : "0.00";
+
+            const reportContent = `
+=== CRICKET MATCH REPORT ===
+${battingTeam} vs ${bowlingTeam}
+
+SCORE: ${totalRuns}/${totalWickets}
+OVERS: ${completedOvers}.${currentBall}
+Run Rate: ${crr}
+Bowler: ${currentBowler}
+
+-- BATSMEN STATS --
+* ${p1.name}: ${p1.runs} (${p1.balls}) - 4s: ${p1.fours}, 6s: ${p1.sixes}
+* ${p2.name}: ${p2.runs} (${p2.balls}) - 4s: ${p2.fours}, 6s: ${p2.sixes}
+
+Generated by [YOUR NAME] CricInfo
+            `;
+            
+            const blob = new Blob([reportContent], { type: "text/plain" });
+            const anchor = document.createElement("a");
+            anchor.href = URL.createObjectURL(blob);
+            anchor.download = `MatchReport_${battingTeam}.txt`;
+            anchor.click();
+        }
+    </script>
+</body>
+</html>
